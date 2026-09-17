@@ -41,7 +41,6 @@ CSV_FILE = "depenses_sou.csv"
 CSV_ARCHIVE_FILE = "depenses_archivees.csv"
 
 # 4. Récupération sécurisée du code Trésorier
-# (Cherche dans st.secrets["CODE_TRESORIER"], sinon utilise "1234" par défaut)
 try:
     CODE_TRESORIER = st.secrets["CODE_TRESORIER"]
 except Exception:
@@ -194,7 +193,7 @@ with tab_tresorier:
                     file_path = selected_row['Justificatif']
                     
                     # Actions
-                    col_act1, col_act2, col_act3 = st.columns(3)
+                    col_act1, col_act2 = st.columns(2)
                     
                     with col_act1:
                         if os.path.exists(file_path):
@@ -217,8 +216,11 @@ with tab_tresorier:
                             st.success("📦 Dépense archivée avec succès !")
                             st.rerun()
 
-                    with col_act3:
-                        if st.button("🗑️ Supprimer définitivement", type="primary", use_container_width=True):
+                    # Zone de suppression sécurisée avec avertissement
+                    with st.expander("🚨 Supprimer cette dépense en cours"):
+                        st.warning("⚠️ Attention : La suppression est définitive. Le fichier justificatif ainsi que la ligne dans le tableau seront supprimés irréversiblement.")
+                        confirm_del_active = st.checkbox("Je confirme vouloir supprimer définitivement cette ligne et son justificatif", key="chk_del_active")
+                        if st.button("🗑️ Confirmer la suppression définitive", type="primary", disabled=not confirm_del_active, key="btn_del_active"):
                             if os.path.exists(file_path):
                                 try:
                                     os.remove(file_path)
@@ -263,21 +265,21 @@ with tab_tresorier:
                         arch_row = df_archive.loc[arch_idx]
                         arch_file_path = arch_row['Justificatif']
                         
-                        col_arch_act1, col_arch_act2 = st.columns(2)
+                        if os.path.exists(arch_file_path):
+                            with open(arch_file_path, "rb") as file:
+                                st.download_button(
+                                    label="📥 Télécharger le justificatif archivé",
+                                    data=file,
+                                    file_name=os.path.basename(arch_file_path),
+                                    use_container_width=True,
+                                    key="dl_archive"
+                                )
                         
-                        with col_arch_act1:
-                            if os.path.exists(arch_file_path):
-                                with open(arch_file_path, "rb") as file:
-                                    st.download_button(
-                                        label="📥 Télécharger le justificatif archivé",
-                                        data=file,
-                                        file_name=os.path.basename(arch_file_path),
-                                        use_container_width=True,
-                                        key="dl_archive"
-                                    )
-                        
-                        with col_arch_act2:
-                            if st.button("🗑️ Supprimer définitivement de l'archive", type="primary", use_container_width=True, key="del_archive_btn"):
+                        # Zone de suppression d'archive sécurisée
+                        with st.expander("🚨 Supprimer cette dépense archivée"):
+                            st.warning("⚠️ Attention : La suppression d'une dépense archivée est irréversible et retirera définitivement cette pièce du bilan financier.")
+                            confirm_del_archive = st.checkbox("Je confirme vouloir supprimer définitivement cette ligne archivée et son justificatif", key="chk_del_archive")
+                            if st.button("🗑️ Confirmer la suppression définitive de l'archive", type="primary", disabled=not confirm_del_archive, key="btn_del_archive"):
                                 if os.path.exists(arch_file_path):
                                     try:
                                         os.remove(arch_file_path)
