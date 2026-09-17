@@ -13,9 +13,9 @@ CSV_FILE = "depenses_sou.csv"
 
 st.title("💰 Gestion de la Trésorerie — Sou des Écoles")
 
-# Onglets d'utilisation
 tab1, tab2 = st.tabs(["📝 Saisir une dépense", "📊 Tableau de bord Trésorier"])
 
+# --- ONGLET 1 : SAISIE ---
 with tab1:
     st.subheader("Enregistrer un nouveau justificatif")
     
@@ -50,7 +50,6 @@ with tab1:
     with col_ttc:
         montant_ttc = st.number_input("Montant TTC (€) *", min_value=0.0, value=0.0, step=0.01, format="%.2f")
     
-    # Calcul automatique dynamique du HT et de la TVA
     rate_val = 0.0
     if "20.0%" in taux_tva: rate_val = 0.20
     elif "10.0%" in taux_tva: rate_val = 0.10
@@ -71,7 +70,6 @@ with tab1:
     
     if st.button("💾 Valider et enregistrer la dépense", type="primary"):
         if nom_prenom and enseigne and montant_ttc > 0 and piece_jointe:
-            # Sauvegarde du fichier justificatif
             file_ext = os.path.splitext(piece_jointe.name)[1]
             clean_name = f"{date_depense}_{manifestation.replace(' ', '_')}_{nom_prenom.replace(' ', '_')}{file_ext}"
             file_path = os.path.join(UPLOAD_DIR, clean_name)
@@ -79,7 +77,6 @@ with tab1:
             with open(file_path, "wb") as f:
                 f.write(piece_jointe.getbuffer())
             
-            # Création de la ligne de données
             new_data = pd.DataFrame([{
                 "Date": date_depense.strftime("%Y-%m-%d"),
                 "Manifestation": manifestation,
@@ -92,17 +89,17 @@ with tab1:
                 "Justificatif": file_path
             }])
             
-            # Sauvegarde CSV
             new_data.to_csv(CSV_FILE, mode='a', header=not os.path.exists(CSV_FILE), index=False)
             st.success("✅ Dépense et justificatif enregistrés avec succès !")
         else:
-            st.error("⚠️ Veuillez remplir tous les champs obligatoires (Nom, Enseigne, Montant TTC > 0) et joindre un justificatif.")
+            st.error("⚠️ Veuillez remplir tous les champs obligatoires et joindre un justificatif.")
 
+# --- ONGLET 2 : TABLEAU DE BORD TRÉSORIER ---
 with tab2:
-    st.subheader("📊 Suivi global et par événement")
+    st.subheader("📊 Suivi global et consultation des justificatifs")
     
-    CODE_TRESORIER = "1234"  # Modifie ton mot de passe ici si besoin
-    mot_de_passe = st.text_input("🔒 Entrez le code d'accès Trésorier pour afficher la comptabilité :", type="password")
+    CODE_TRESORIER = "1234"
+    mot_de_passe = st.text_input("🔒 Entrez le code d'accès Trésorier :", type="password")
     
     if mot_de_passe == CODE_TRESORIER:
         st.success("Accès autorisé.")
@@ -123,7 +120,7 @@ with tab2:
             if pay_filter != "Tous":
                 filtered_df = filtered_df[filtered_df["Mode de paiement"] == pay_filter]
 
-            # Indicateurs Clés
+            # Indicateurs
             m1, m2, m3, m4 = st.columns(4)
             m1.metric("Total TTC", f"{filtered_df['Montant TTC (€)'].sum():.2f} €")
             m2.metric("Total HT", f"{filtered_df['Montant HT (€)'].sum():.2f} €")
@@ -133,14 +130,33 @@ with tab2:
             st.divider()
             st.dataframe(filtered_df, use_container_width=True)
             
-            # Téléchargement CSV pour Excel
-            csv = filtered_df.to_csv(index=False).encode('utf-8')
-            st.download_button(
-                label="📥 Exporter ce tableau vers Excel (CSV)",
-                data=csv,
-                file_name=f"tresorerie_sou_{datetime.now().strftime('%Y%m%d')}.csv",
-                mime="text/csv",
-            )
+            st.divider()
+            st.subheader("🔎 Consulter / Télécharger une pièce jointe")
+            
+            # Sélection de la dépense à consulter
+            df['Libelle'] = df['Date'] + " - " + df['Bénévole'] + " - " + df['Enseigne'] + " (" + df['Montant TTC (€)'].astype(str) + " €)"
+            selected_entry = st.selectbox("Choisissez une dépense pour afficher son justificatif :", df['Libelle'])
+            
+            selected_row = df[df['Libelle'] == selected_entry].iloc[0]
+            file_path = selected_row['Justificatif']
+            
+            if os.path.exists(file_path):
+                file_ext = os.path.splitext(file_path)[1].lower()
+                with open(file_path, "rb") as file:
+                    btn = st.download_button(
+                        label="📥 Télécharger le justificatif",
+                        data=file,
+                        file_name=os.path.basename(file_path)
+                    )
+                
+                # Affichage direct si c'est une image
+                if file_ext in [".png", ".jpg", ".jpeg"]:
+                    st.image(file_path, caption=f"Justificatif : {selected_row['Enseigne']}", use_column_width=True)
+                elif file_ext == ".pdf":
+                    st.info("📄 C'est un document PDF. Utilisez le bouton ci-dessus pour le télécharger et l'ouvrir.")
+            else:
+                st.warning("Fichier introuvable sur le serveur.")
+                
         else:
             st.info("Aucune dépense enregistrée pour le moment.")
     elif mot_de_passe != "":
