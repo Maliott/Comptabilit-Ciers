@@ -103,39 +103,49 @@ with tab1:
 with tab2:
     st.subheader("📊 Suivi global et par événement")
     
-    if os.path.exists(CSV_FILE):
-        df = pd.read_csv(CSV_FILE)
+    # Mot de passe pour protéger l'accès au tableau de bord
+    CODE_TRESORIER = "1234"  # <-- Modifie ton mot de passe ici
+    
+    mot_de_passe = st.text_input("🔒 Entrez le code d'accès Trésorier pour afficher la comptabilité :", type="password")
+    
+    if mot_de_passe == CODE_TRESORIER:
+        st.success("Accès autorisé.")
         
-        # Filtres
-        col_f1, col_f2 = st.columns(2)
-        with col_f1:
-            event_filter = st.selectbox("Filtrer par manifestation", ["Toutes"] + list(df["Manifestation"].unique()))
-        with col_f2:
-            pay_filter = st.selectbox("Filtrer par mode de paiement", ["Tous"] + list(df["Mode de paiement"].unique()))
+        if os.path.exists(CSV_FILE):
+            df = pd.read_csv(CSV_FILE)
             
-        filtered_df = df.copy()
-        if event_filter != "Toutes":
-            filtered_df = filtered_df[filtered_df["Manifestation"] == event_filter]
-        if pay_filter != "Tous":
-            filtered_df = filtered_df[filtered_df["Mode de paiement"] == pay_filter]
+            # Filtres
+            col_f1, col_f2 = st.columns(2)
+            with col_f1:
+                event_filter = st.selectbox("Filtrer par manifestation", ["Toutes"] + list(df["Manifestation"].unique()))
+            with col_f2:
+                pay_filter = st.selectbox("Filtrer par mode de paiement", ["Tous"] + list(df["Mode de paiement"].unique()))
+                
+            filtered_df = df.copy()
+            if event_filter != "Toutes":
+                filtered_df = filtered_df[filtered_df["Manifestation"] == event_filter]
+            if pay_filter != "Tous":
+                filtered_df = filtered_df[filtered_df["Mode de paiement"] == pay_filter]
 
-        # Indicateurs Clés
-        m1, m2, m3, m4 = st.columns(4)
-        m1.metric("Total TTC", f"{filtered_df['Montant TTC (€)'].sum():.2f} €")
-        m2.metric("Total HT", f"{filtered_df['Montant HT (€)'].sum():.2f} €")
-        m3.metric("Total TVA", f"{filtered_df['TVA (€)'].sum():.2f} €")
-        m4.metric("Nombre de pièces", len(filtered_df))
+            # Indicateurs Clés
+            m1, m2, m3, m4 = st.columns(4)
+            m1.metric("Total TTC", f"{filtered_df['Montant TTC (€)'].sum():.2f} €")
+            m2.metric("Total HT", f"{filtered_df['Montant HT (€)'].sum():.2f} €")
+            m3.metric("Total TVA", f"{filtered_df['TVA (€)'].sum():.2f} €")
+            m4.metric("Nombre de pièces", len(filtered_df))
 
-        st.divider()
-        st.dataframe(filtered_df, use_container_width=True)
-        
-        # Téléchargement CSV pour Excel
-        csv = filtered_df.to_csv(index=False).encode('utf-8')
-        st.download_button(
-            label="📥 Exporter ce tableau vers Excel (CSV)",
-            data=csv,
-            file_name=f"tresorerie_sou_{datetime.now().strftime('%Y%m%d')}.csv",
-            mime="text/csv",
-        )
-    else:
-        st.info("Aucune dépense enregistrée pour le moment.")
+            st.divider()
+            st.dataframe(filtered_df, use_container_width=True)
+            
+            # Téléchargement CSV pour Excel
+            csv = filtered_df.to_csv(index=False).encode('utf-8')
+            st.download_button(
+                label="📥 Exporter ce tableau vers Excel (CSV)",
+                data=csv,
+                file_name=f"tresorerie_sou_{datetime.now().strftime('%Y%m%d')}.csv",
+                mime="text/csv",
+            )
+        else:
+            st.info("Aucune dépense enregistrée pour le moment.")
+    elif mot_de_passe != "":
+        st.error("Code d'accès incorrect.")
