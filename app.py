@@ -149,9 +149,9 @@ with tab2:
                         file_name=os.path.basename(file_path)
                     )
                 
-                # Affichage direct si c'est une image
+                # Affichage direct corrigé
                 if file_ext in [".png", ".jpg", ".jpeg"]:
-                    st.image(file_path, caption=f"Justificatif : {selected_row['Enseigne']}", use_column_width=True)
+                    st.image(file_path, caption=f"Justificatif : {selected_row['Enseigne']}", use_container_width=True)
                 elif file_ext == ".pdf":
                     st.info("📄 C'est un document PDF. Utilisez le bouton ci-dessus pour le télécharger et l'ouvrir.")
             else:
