@@ -35,7 +35,7 @@ CSV_ARCHIVE_FILE = "depenses_archivees.csv"
 try:
     CODE_TRESORIER = st.secrets["CODE_TRESORIER"]
 except Exception:
-    CODE_TRESORIER = "1234"
+    CODE_TRESORIER = "jesaispas"
 
 CODE_SUPPRESSION = "suppression"
 
