@@ -39,6 +39,19 @@ except Exception:
 
 CODE_SUPPRESSION = " suppression "
 
+# --- GESTION DE LA RÉINITIALISATION DU FORMULAIRE ---
+if "reset_form" not in st.session_state:
+    st.session_state.reset_form = False
+
+if st.session_state.reset_form:
+    st.session_state["saisie_nom_prenom"] = ""
+    st.session_state["saisie_enseigne"] = ""
+    st.session_state["saisie_manifestation_autre"] = ""
+    st.session_state["saisie_ttc"] = 0.0
+    st.session_state["saisie_ht"] = 0.0
+    st.session_state["saisie_tva"] = 0.0
+    st.session_state.reset_form = False
+
 # --- FONCTION DE CALCUL AUTOMATIQUE DES MONTANTS ---
 def calculer_montants():
     ttc = st.session_state.get("saisie_ttc", 0.0)
@@ -78,7 +91,6 @@ with tab_saisie:
     if "uploader_key" not in st.session_state:
         st.session_state.uploader_key = 0
 
-    # Initialisation des variables dans session_state si elles n'existent pas
     if "saisie_ttc" not in st.session_state:
         st.session_state["saisie_ttc"] = 0.0
     if "saisie_ht" not in st.session_state:
@@ -171,17 +183,9 @@ with tab_saisie:
             
             new_data.to_csv(CSV_FILE, mode='a', header=not os.path.exists(CSV_FILE), index=False)
             
-            # Réinitialisation propre des champs
             st.session_state.uploader_key += 1
             st.session_state["show_success_msg"] = True
-            
-            for key in ["saisie_nom_prenom", "saisie_enseigne", "saisie_manifestation_autre"]:
-                if key in st.session_state:
-                    st.session_state[key] = ""
-            
-            st.session_state["saisie_ttc"] = 0.0
-            st.session_state["saisie_ht"] = 0.0
-            st.session_state["saisie_tva"] = 0.0
+            st.session_state.reset_form = True
 
             st.rerun()
         else:
@@ -264,7 +268,7 @@ with tab_tresorier:
                             st.rerun()
 
                     with st.expander("🚨 Supprimer cette dépense en cours"):
-                        st.warning("⚠️ Attention : La suppression est definitiva. Le fichier justificatif ainsi que la ligne dans le tableau seront supprimés irréversiblement.")
+                        st.warning("⚠️ Attention : La suppression est définitive. Le fichier justificatif ainsi que la ligne dans le tableau seront supprimés irréversiblement.")
                         
                         pwd_del_active = st.text_input("🔑 Mot de passe de suppression requis :", type="password", key="pwd_del_active")
                         confirm_del_active = st.checkbox("Je confirme vouloir supprimer définitivement cette ligne et son justificatif", key="chk_del_active")
