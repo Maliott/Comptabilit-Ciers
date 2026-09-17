@@ -47,7 +47,7 @@ except Exception:
     CODE_TRESORIER = "1234"
 
 # Code secret requis pour valider toute suppression
-CODE_SUPPRESSION = " suppression "
+CODE_SUPPRESSION = "suppression"
 
 st.title("💰 Gestion de la Trésorerie — Sou des Écoles")
 
