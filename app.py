@@ -113,10 +113,10 @@ with tab_tresorier:
         st.success("Accès autorisé.")
         
         # Sous-onglets dans la partie Trésorier
-        sub_tab1, sub_tab2 = st.tabs(["📊 Suivi global & Pièces", "🎪 Récapitulatif par Manifestation"])
+        sub_tab1, sub_tab2 = st.tabs(["📊 Dépenses en cours & Pièces", "🎪 Bilan des Manifestations (Archivées)"])
         
         # ----------------------------------------------------
-        # SOUS-ONGLET 1 : SUIVI GLOBAL & GESTION DES PIÈCES
+        # SOUS-ONGLET 1 : DÉPENSES EN COURS & GESTION DES PIÈCES
         # ----------------------------------------------------
         with sub_tab1:
             st.subheader("📊 Suivi général et gestion des pièces")
@@ -213,7 +213,7 @@ with tab_tresorier:
 
             # SECTION ARCHIVES
             st.divider()
-            with st.expander("📁 Voir et consulter les dépenses archivées"):
+            with st.expander("📁 Voir et consulter toutes les dépenses archivées"):
                 if os.path.exists(CSV_ARCHIVE_FILE) and os.path.getsize(CSV_ARCHIVE_FILE) > 0:
                     df_archive = pd.read_csv(CSV_ARCHIVE_FILE)
                     if not df_archive.empty:
@@ -250,23 +250,23 @@ with tab_tresorier:
                     st.info("Aucune dépense archivée pour l'instant.")
 
         # ----------------------------------------------------
-        # SOUS-ONGLET 2 : RÉCAPITULATIF PAR MANIFESTATION
+        # SOUS-ONGLET 2 : BILAN DES MANIFESTATIONS (ARCHIVÉES)
         # ----------------------------------------------------
         with sub_tab2:
-            st.subheader("🎪 Bilan financier par manifestation")
+            st.subheader("🎪 Bilan financier par manifestation (Dépenses archivées)")
             
-            if os.path.exists(CSV_FILE) and os.path.getsize(CSV_FILE) > 0:
-                df_manifest = pd.read_csv(CSV_FILE)
+            if os.path.exists(CSV_ARCHIVE_FILE) and os.path.getsize(CSV_ARCHIVE_FILE) > 0:
+                df_manifest_archive = pd.read_csv(CSV_ARCHIVE_FILE)
                 
-                if not df_manifest.empty:
-                    list_manifestations = sorted(list(df_manifest["Manifestation"].unique()))
+                if not df_manifest_archive.empty:
+                    list_manifestations = sorted(list(df_manifest_archive["Manifestation"].unique()))
                     selected_manifestation = st.selectbox(
-                        "🎯 Choisissez la manifestation à analyser :", 
+                        "🎯 Choisissez la manifestation archivée à analyser :", 
                         list_manifestations,
-                        key="select_manifest_recap"
+                        key="select_manifest_recap_archive"
                     )
                     
-                    df_event = df_manifest[df_manifest["Manifestation"] == selected_manifestation]
+                    df_event = df_manifest_archive[df_manifest_archive["Manifestation"] == selected_manifestation]
                     
                     st.divider()
                     
@@ -282,15 +282,15 @@ with tab_tresorier:
                     col_table, col_chart = st.columns([3, 2])
                     
                     with col_table:
-                        st.subheader(f"📋 Dépenses : {selected_manifestation}")
+                        st.subheader(f"📋 Dépenses archivées : {selected_manifestation}")
                         st.dataframe(df_event.drop(columns=['Justificatif']), use_container_width=True)
                         
-                        # Exportation CSV des dépenses de cet événement
+                        # Exportation CSV des dépenses archivées de cet événement
                         csv_data = df_event.to_csv(index=False).encode('utf-8')
                         st.download_button(
                             label=f"📥 Exporter le bilan de '{selected_manifestation}' (CSV)",
                             data=csv_data,
-                            file_name=f"bilan_{selected_manifestation.replace(' ', '_')}.csv",
+                            file_name=f"bilan_archive_{selected_manifestation.replace(' ', '_')}.csv",
                             mime="text/csv"
                         )
 
@@ -300,9 +300,9 @@ with tab_tresorier:
                         st.bar_chart(chart_data)
 
                 else:
-                    st.info("Aucune dépense enregistrée.")
+                    st.info("Aucune dépense archivée à analyser pour le moment.")
             else:
-                st.info("Aucune dépense enregistrée pour le moment.")
+                st.info("Aucune dépense n'a encore été archivée.")
 
     elif mot_de_passe != "":
         st.error("Code d'accès incorrect.")
