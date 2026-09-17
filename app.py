@@ -154,7 +154,8 @@ with tab2:
                                 label="📥 Télécharger le justificatif",
                                 data=file,
                                 file_name=os.path.basename(file_path),
-                                use_container_width=True
+                                use_container_width=True,
+                                key="dl_active"
                             )
                 
                 with col_act2:
@@ -203,11 +204,41 @@ with tab2:
 
         # --- SECTION ARCHIVES ---
         st.divider()
-        with st.expander("📁 Voir les dépenses archivées"):
+        with st.expander("📁 Voir et consulter les dépenses archivées"):
             if os.path.exists(CSV_ARCHIVE_FILE) and os.path.getsize(CSV_ARCHIVE_FILE) > 0:
                 df_archive = pd.read_csv(CSV_ARCHIVE_FILE)
-                st.dataframe(df_archive, use_container_width=True)
-                st.caption(f"Total des dépenses archivées : {df_archive['Montant TTC (€)'].sum():.2f} € ({len(df_archive)} pièces)")
+                if not df_archive.empty:
+                    st.dataframe(df_archive, use_container_width=True)
+                    st.caption(f"Total des dépenses archivées : {df_archive['Montant TTC (€)'].sum():.2f} € ({len(df_archive)} pièces)")
+                    
+                    st.divider()
+                    st.subheader("🔎 Visualiser un justificatif archivé")
+                    
+                    df_archive['Libelle'] = df_archive['Date'] + " - " + df_archive['Bénévole'] + " - " + df_archive['Enseigne'] + " (" + df_archive['Montant TTC (€)'].astype(str) + " €)"
+                    selected_archive_entry = st.selectbox("Choisissez une dépense archivée :", df_archive['Libelle'], key="archive_select")
+                    
+                    arch_row = df_archive[df_archive['Libelle'] == selected_archive_entry].iloc[0]
+                    arch_file_path = arch_row['Justificatif']
+                    
+                    if os.path.exists(arch_file_path):
+                        with open(arch_file_path, "rb") as file:
+                            st.download_button(
+                                label="📥 Télécharger le justificatif archivé",
+                                data=file,
+                                file_name=os.path.basename(arch_file_path),
+                                use_container_width=True,
+                                key="dl_archive"
+                            )
+                        
+                        arch_ext = os.path.splitext(arch_file_path)[1].lower()
+                        if arch_ext in [".png", ".jpg", ".jpeg"]:
+                            st.image(arch_file_path, caption=f"Justificatif archivé : {arch_row['Enseigne']}", use_container_width=True)
+                        elif arch_ext == ".pdf":
+                            st.info("📄 Document PDF. Téléchargez-le avec le bouton ci-dessus.")
+                    else:
+                        st.warning("Fichier justificatif archivé introuvable sur le serveur.")
+                else:
+                    st.info("Aucune dépense archivée.")
             else:
                 st.info("Aucune dépense archivée pour l'instant.")
 
