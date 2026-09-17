@@ -37,7 +37,7 @@ try:
 except Exception:
     CODE_TRESORIER = "1234"
 
-CODE_SUPPRESSION = " suppression "
+CODE_SUPPRESSION = "suppression"
 
 # --- GESTION DE LA RÉINITIALISATION DU FORMULAIRE ---
 if "reset_form" not in st.session_state:
