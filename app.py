@@ -40,11 +40,14 @@ os.makedirs(UPLOAD_DIR, exist_ok=True)
 CSV_FILE = "depenses_sou.csv"
 CSV_ARCHIVE_FILE = "depenses_archivees.csv"
 
-# 4. Récupération sécurisée du code Trésorier
+# 4. Codes d'accès
 try:
     CODE_TRESORIER = st.secrets["CODE_TRESORIER"]
 except Exception:
     CODE_TRESORIER = "1234"
+
+# Code secret requis pour valider toute suppression
+CODE_SUPPRESSION = " suppression "
 
 st.title("💰 Gestion de la Trésorerie — Sou des Écoles")
 
@@ -216,11 +219,19 @@ with tab_tresorier:
                             st.success("📦 Dépense archivée avec succès !")
                             st.rerun()
 
-                    # Zone de suppression sécurisée avec avertissement
+                    # Zone de suppression sécurisée avec mot de passe
                     with st.expander("🚨 Supprimer cette dépense en cours"):
                         st.warning("⚠️ Attention : La suppression est définitive. Le fichier justificatif ainsi que la ligne dans le tableau seront supprimés irréversiblement.")
+                        
+                        pwd_del_active = st.text_input("🔑 Mot de passe de suppression requis :", type="password", key="pwd_del_active")
                         confirm_del_active = st.checkbox("Je confirme vouloir supprimer définitivement cette ligne et son justificatif", key="chk_del_active")
-                        if st.button("🗑️ Confirmer la suppression définitive", type="primary", disabled=not confirm_del_active, key="btn_del_active"):
+                        
+                        is_pwd_correct_active = (pwd_del_active == CODE_SUPPRESSION)
+                        
+                        if pwd_del_active != "" and not is_pwd_correct_active:
+                            st.error("Mot de passe de suppression incorrect.")
+
+                        if st.button("🗑️ Confirmer la suppression définitive", type="primary", disabled=not (confirm_del_active and is_pwd_correct_active), key="btn_del_active"):
                             if os.path.exists(file_path):
                                 try:
                                     os.remove(file_path)
@@ -275,11 +286,19 @@ with tab_tresorier:
                                     key="dl_archive"
                                 )
                         
-                        # Zone de suppression d'archive sécurisée
+                        # Zone de suppression d'archive sécurisée avec mot de passe
                         with st.expander("🚨 Supprimer cette dépense archivée"):
                             st.warning("⚠️ Attention : La suppression d'une dépense archivée est irréversible et retirera définitivement cette pièce du bilan financier.")
+                            
+                            pwd_del_archive = st.text_input("🔑 Mot de passe de suppression requis :", type="password", key="pwd_del_archive")
                             confirm_del_archive = st.checkbox("Je confirme vouloir supprimer définitivement cette ligne archivée et son justificatif", key="chk_del_archive")
-                            if st.button("🗑️ Confirmer la suppression définitive de l'archive", type="primary", disabled=not confirm_del_archive, key="btn_del_archive"):
+                            
+                            is_pwd_correct_archive = (pwd_del_archive == CODE_SUPPRESSION)
+                            
+                            if pwd_del_archive != "" and not is_pwd_correct_archive:
+                                st.error("Mot de passe de suppression incorrect.")
+
+                            if st.button("🗑️ Confirmer la suppression définitive de l'archive", type="primary", disabled=not (confirm_del_archive and is_pwd_correct_archive), key="btn_del_archive"):
                                 if os.path.exists(arch_file_path):
                                     try:
                                         os.remove(arch_file_path)
