@@ -47,7 +47,7 @@ except Exception:
     CODE_TRESORIER = "1234"
 
 # Code secret requis pour valider toute suppression
-CODE_SUPPRESSION = "suppression"
+CODE_SUPPRESSION = " suppression "
 
 st.title("💰 Gestion de la Trésorerie — Sou des Écoles")
 
@@ -58,62 +58,75 @@ tab_saisie, tab_tresorier = st.tabs(["📝 Saisir une dépense", "📊 Tableau d
 # ==========================================
 with tab_saisie:
     st.subheader("Enregistrer un nouveau justificatif")
-    
-    col_event, col_date = st.columns(2)
-    with col_event:
-        manifestation_choice = st.selectbox(
-            "Manifestation *", 
-            ["Chalet gourmand", "Tombola", "Fête de l'école", "Autre"]
-        )
-        if manifestation_choice == "Autre":
-            manifestation = st.text_input("Précisez le nom de la manifestation *")
-        else:
-            manifestation = manifestation_choice
 
-    with col_date:
-        date_depense = st.date_input("Date de la dépense *", datetime.now())
+    # Initialisation de la clé d'upload pour forcer le réenregistrement du file_uploader
+    if "uploader_key" not in st.session_state:
+        st.session_state.uploader_key = 0
+
+    with st.form("form_saisie_depense", clear_on_submit=True):
+        col_event, col_date = st.columns(2)
+        with col_event:
+            manifestation_choice = st.selectbox(
+                "Manifestation *", 
+                ["Chalet gourmand", "Tombola", "Fête de l'école", "Autre"],
+                key="form_manifestation_choice"
+            )
+            manifestation_autre = st.text_input("Précisez le nom de la manifestation (si 'Autre')", key="form_manifestation_autre")
+
+        with col_date:
+            date_depense = st.date_input("Date de la dépense *", datetime.now(), key="form_date")
+            
+        col_ben, col_ens = st.columns(2)
+        with col_ben:
+            nom_prenom = st.text_input("Nom & Prénom du bénévole / payeur *", key="form_nom_prenom")
+        with col_ens:
+            enseigne = st.text_input("Enseigne / Magasin / Fournisseur *", key="form_enseigne")
+
+        col_pay, col_tva_rate = st.columns(2)
+        with col_pay:
+            mode_paiement = st.selectbox(
+                "Mode de paiement *",
+                ["Carte Bancaire", "Chèque", "Espèces", "Virement", "Avance bénévole (À rembourser)"],
+                key="form_mode_paiement"
+            )
+        with col_tva_rate:
+            taux_tva = st.selectbox(
+                "Taux de TVA *",
+                ["20.0%", "10.0%", "5.5%", "2.1%", "0.0% (Saisie HT manuelle)"],
+                key="form_taux_tva"
+            )
+
+        col_ttc, col_ht, col_tva = st.columns(3)
+        with col_ttc:
+            montant_ttc = st.number_input("Montant TTC (€) *", min_value=0.0, value=0.0, step=0.01, format="%.2f", key="form_ttc")
+
+        rate_val = 0.0
+        if "20.0%" in taux_tva: rate_val = 0.20
+        elif "10.0%" in taux_tva: rate_val = 0.10
+        elif "5.5%" in taux_tva: rate_val = 0.055
+        elif "2.1%" in taux_tva: rate_val = 0.021
+
+        auto_ht = round(montant_ttc / (1 + rate_val), 2) if rate_val > 0 else montant_ttc
+        auto_tva = round(montant_ttc - auto_ht, 2)
+
+        with col_ht:
+            montant_ht = st.number_input("Montant HT (€)", min_value=0.0, value=auto_ht, step=0.01, format="%.2f", key="form_ht")
+        with col_tva:
+            montant_tva = st.number_input("Montant TVA (€)", min_value=0.0, value=auto_tva, step=0.01, format="%.2f", key="form_tva")
+
+        piece_jointe = st.file_uploader(
+            "📷 Photo du ticket de caisse ou PDF de la facture *", 
+            type=["png", "jpg", "jpeg", "pdf"],
+            key=f"uploader_{st.session_state.uploader_key}"
+        )
         
-    col_ben, col_ens = st.columns(2)
-    with col_ben:
-        nom_prenom = st.text_input("Nom & Prénom du bénévole / payeur *")
-    with col_ens:
-        enseigne = st.text_input("Enseigne / Magasin / Fournisseur *")
+        st.caption("* Champs obligatoires")
+        
+        submit_btn = st.form_submit_button("💾 Valider et enregistrer la dépense", type="primary")
 
-    col_pay, col_tva_rate = st.columns(2)
-    with col_pay:
-        mode_paiement = st.selectbox(
-            "Mode de paiement *",
-            ["Carte Bancaire", "Chèque", "Espèces", "Virement", "Avance bénévole (À rembourser)"]
-        )
-    with col_tva_rate:
-        taux_tva = st.selectbox(
-            "Taux de TVA *",
-            ["20.0%", "10.0%", "5.5%", "2.1%", "0.0% (Saisie HT manuelle)"]
-        )
-
-    col_ttc, col_ht, col_tva = st.columns(3)
-    with col_ttc:
-        montant_ttc = st.number_input("Montant TTC (€) *", min_value=0.0, value=0.0, step=0.01, format="%.2f")
-    
-    rate_val = 0.0
-    if "20.0%" in taux_tva: rate_val = 0.20
-    elif "10.0%" in taux_tva: rate_val = 0.10
-    elif "5.5%" in taux_tva: rate_val = 0.055
-    elif "2.1%" in taux_tva: rate_val = 0.021
-
-    auto_ht = round(montant_ttc / (1 + rate_val), 2) if rate_val > 0 else montant_ttc
-    auto_tva = round(montant_ttc - auto_ht, 2)
-
-    with col_ht:
-        montant_ht = st.number_input("Montant HT (€)", min_value=0.0, value=auto_ht, step=0.01, format="%.2f")
-    with col_tva:
-        montant_tva = st.number_input("Montant TVA (€)", min_value=0.0, value=auto_tva, step=0.01, format="%.2f")
-
-    piece_jointe = st.file_uploader("📷 Photo du ticket de caisse ou PDF de la facture *", type=["png", "jpg", "jpeg", "pdf"])
-    
-    st.caption("* Champs obligatoires")
-    
-    if st.button("💾 Valider et enregistrer la dépense", type="primary"):
+    if submit_btn:
+        manifestation = manifestation_autre if manifestation_choice == "Autre" else manifestation_choice
+        
         if manifestation and nom_prenom and enseigne and montant_ttc > 0 and piece_jointe:
             file_ext = os.path.splitext(piece_jointe.name)[1]
             clean_name = f"{date_depense}_{manifestation.replace(' ', '_')}_{nom_prenom.replace(' ', '_')}{file_ext}"
@@ -135,9 +148,14 @@ with tab_saisie:
             }])
             
             new_data.to_csv(CSV_FILE, mode='a', header=not os.path.exists(CSV_FILE), index=False)
-            st.success("✅ Dépense et justificatif enregistrés avec succès !")
+            
+            # Réinitialiser le composant d'import de fichier
+            st.session_state.uploader_key += 1
+            
+            st.success("✅ Dépense et justificatif enregistrés avec succès ! Le formulaire a été réinitialisé.")
+            st.rerun()
         else:
-            st.error("⚠️ Veuillez remplir tous les champs obligatoires (y compris la manifestation) et joindre un justificatif.")
+            st.error("⚠️ Veuillez remplir tous les champs obligatoires (y compris le nom de la manifestation si 'Autre') et joindre un justificatif.")
 
 # ==========================================
 # --- ONGLET 2 : TABLEAU DE BORD TRÉSORIER ---
@@ -221,7 +239,7 @@ with tab_tresorier:
 
                     # Zone de suppression sécurisée avec mot de passe
                     with st.expander("🚨 Supprimer cette dépense en cours"):
-                        st.warning("⚠️ Attention : La suppression est définitive. Le fichier justificatif ainsi que la ligne dans le tableau seront supprimés irréversiblement.")
+                        st.warning("⚠️ Attention : La suppression est definitiva. Le fichier justificatif ainsi que la ligne dans le tableau seront supprimés irréversiblement.")
                         
                         pwd_del_active = st.text_input("🔑 Mot de passe de suppression requis :", type="password", key="pwd_del_active")
                         confirm_del_active = st.checkbox("Je confirme vouloir supprimer définitivement cette ligne et son justificatif", key="chk_del_active")
