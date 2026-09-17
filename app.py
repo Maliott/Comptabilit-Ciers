@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import os
+import time
 from datetime import datetime
 
 # 1. Configuration de la page
@@ -58,6 +59,12 @@ tab_saisie, tab_tresorier = st.tabs(["📝 Saisir une dépense", "📊 Tableau d
 # ==========================================
 with tab_saisie:
     st.subheader("Enregistrer un nouveau justificatif")
+
+    # Message de confirmation si une dépense vient d'être enregistrée avec succès
+    if st.session_state.get("show_success_msg", False):
+        st.success("🎉 La dépense et son justificatif ont été enregistrés avec succès ! Le formulaire a été réinitialisé.")
+        st.balloons()
+        st.session_state["show_success_msg"] = False
 
     # Initialisation de la clé d'upload pour forcer le réenregistrement du file_uploader
     if "uploader_key" not in st.session_state:
@@ -156,11 +163,11 @@ with tab_saisie:
             
             # Réinitialiser le composant d'import de fichier
             st.session_state.uploader_key += 1
+            st.session_state["show_success_msg"] = True
             
-            st.success("✅ Dépense et justificatif enregistrés avec succès ! Le formulaire a été réinitialisé.")
             st.rerun()
         else:
-            st.error("⚠️ Veuillez remplir tous les champs obligatoires (y compris la précision du nom si 'Autre') et joindre un justificatif.")
+            st.error("⚠️ Veuillez remplir tous les champs obligatoires (y compris le nom de la manifestation si 'Autre') et joindre un justificatif.")
 
 # ==========================================
 # --- ONGLET 2 : TABLEAU DE BORD TRÉSORIER ---
