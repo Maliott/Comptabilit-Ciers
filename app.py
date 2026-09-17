@@ -22,10 +22,16 @@ with tab1:
     
     col_event, col_date = st.columns(2)
     with col_event:
-        manifestation = st.selectbox(
+        manifestation_choice = st.selectbox(
             "Manifestation *", 
-            ["Chalet gourmand", "Tombola", "Fête de l'école"]
+            ["Chalet gourmand", "Tombola", "Fête de l'école", "Autre"]
         )
+        # Gestion du choix "Autre"
+        if manifestation_choice == "Autre":
+            manifestation = st.text_input("Précisez le nom de la manifestation *")
+        else:
+            manifestation = manifestation_choice
+
     with col_date:
         date_depense = st.date_input("Date de la dépense *", datetime.now())
         
@@ -70,7 +76,7 @@ with tab1:
     st.caption("* Champs obligatoires")
     
     if st.button("💾 Valider et enregistrer la dépense", type="primary"):
-        if nom_prenom and enseigne and montant_ttc > 0 and piece_jointe:
+        if manifestation and nom_prenom and enseigne and montant_ttc > 0 and piece_jointe:
             file_ext = os.path.splitext(piece_jointe.name)[1]
             clean_name = f"{date_depense}_{manifestation.replace(' ', '_')}_{nom_prenom.replace(' ', '_')}{file_ext}"
             file_path = os.path.join(UPLOAD_DIR, clean_name)
@@ -93,7 +99,7 @@ with tab1:
             new_data.to_csv(CSV_FILE, mode='a', header=not os.path.exists(CSV_FILE), index=False)
             st.success("✅ Dépense et justificatif enregistrés avec succès !")
         else:
-            st.error("⚠️ Veuillez remplir tous les champs obligatoires et joindre un justificatif.")
+            st.error("⚠️ Veuillez remplir tous les champs obligatoires (y compris le nom de la manifestation si 'Autre' est sélectionné) et joindre un justificatif.")
 
 # --- ONGLET 2 : TABLEAU DE BORD TRÉSORIER ---
 with tab2:
