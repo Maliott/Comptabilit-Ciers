@@ -6,7 +6,7 @@ from datetime import datetime
 # 1. Configuration de la page
 st.set_page_config(page_title="Trésorerie Sou des Écoles", page_icon="💰", layout="wide")
 
-# 2. Masquer TOUS les éléments d'interface Streamlit (Header, Toolbar, Badge rouge du bas, Menu)
+# 2. Masquer les éléments d'interface Streamlit
 hide_streamlit_style = """
     <style>
     #MainMenu {visibility: hidden;}
@@ -20,9 +20,7 @@ hide_streamlit_style = """
     div[class*="styles_viewerBadge"] {display: none !important;}
     a[href*="streamlit.io"] {display: none !important;}
     #stDecoration {display: none !important;}
-    .block-container {
-        padding-top: 1.5rem !important;
-    }
+    .block-container { padding-top: 1.5rem !important; }
     </style>
 """
 st.markdown(hide_streamlit_style, unsafe_allow_html=True)
@@ -40,6 +38,27 @@ except Exception:
     CODE_TRESORIER = "1234"
 
 CODE_SUPPRESSION = " suppression "
+
+# --- FONCTION DE CALCUL AUTOMATIQUE DES MONTANTS ---
+def calculer_montants():
+    ttc = st.session_state.get("saisie_ttc", 0.0)
+    taux_str = st.session_state.get("saisie_taux_tva", "20.0%")
+    
+    rate_val = 0.0
+    if "20.0%" in taux_str: rate_val = 0.20
+    elif "10.0%" in taux_str: rate_val = 0.10
+    elif "5.5%" in taux_str: rate_val = 0.055
+    elif "2.1%" in taux_str: rate_val = 0.021
+
+    if rate_val > 0:
+        ht = round(ttc / (1 + rate_val), 2)
+        tva = round(ttc - ht, 2)
+    else:
+        ht = ttc
+        tva = 0.0
+
+    st.session_state["saisie_ht"] = ht
+    st.session_state["saisie_tva"] = tva
 
 st.title("💰 Gestion de la Trésorerie — Sou des Écoles")
 
@@ -59,7 +78,14 @@ with tab_saisie:
     if "uploader_key" not in st.session_state:
         st.session_state.uploader_key = 0
 
-    # --- Saisie interactive en dehors de st.form pour réactivité immédiate ---
+    # Initialisation des variables dans session_state si elles n'existent pas
+    if "saisie_ttc" not in st.session_state:
+        st.session_state["saisie_ttc"] = 0.0
+    if "saisie_ht" not in st.session_state:
+        st.session_state["saisie_ht"] = 0.0
+    if "saisie_tva" not in st.session_state:
+        st.session_state["saisie_tva"] = 0.0
+
     col_event, col_date = st.columns(2)
     with col_event:
         manifestation_choice = st.selectbox(
@@ -92,27 +118,25 @@ with tab_saisie:
         taux_tva = st.selectbox(
             "Taux de TVA *",
             ["20.0%", "10.0%", "5.5%", "2.1%", "0.0% (Saisie HT manuelle)"],
-            key="saisie_taux_tva"
+            key="saisie_taux_tva",
+            on_change=calculer_montants
         )
 
     col_ttc, col_ht, col_tva = st.columns(3)
     with col_ttc:
-        montant_ttc = st.number_input("Montant TTC (€) *", min_value=0.0, value=0.0, step=0.01, format="%.2f", key="saisie_ttc")
-
-    # Calcul dynamique automatique
-    rate_val = 0.0
-    if "20.0%" in taux_tva: rate_val = 0.20
-    elif "10.0%" in taux_tva: rate_val = 0.10
-    elif "5.5%" in taux_tva: rate_val = 0.055
-    elif "2.1%" in taux_tva: rate_val = 0.021
-
-    auto_ht = round(montant_ttc / (1 + rate_val), 2) if rate_val > 0 else montant_ttc
-    auto_tva = round(montant_ttc - auto_ht, 2)
+        montant_ttc = st.number_input(
+            "Montant TTC (€) *", 
+            min_value=0.0, 
+            step=0.01, 
+            format="%.2f", 
+            key="saisie_ttc",
+            on_change=calculer_montants
+        )
 
     with col_ht:
-        montant_ht = st.number_input("Montant HT (€)", min_value=0.0, value=auto_ht, step=0.01, format="%.2f", key="saisie_ht")
+        montant_ht = st.number_input("Montant HT (€)", min_value=0.0, step=0.01, format="%.2f", key="saisie_ht")
     with col_tva:
-        montant_tva = st.number_input("Montant TVA (€)", min_value=0.0, value=auto_tva, step=0.01, format="%.2f", key="saisie_tva")
+        montant_tva = st.number_input("Montant TVA (€)", min_value=0.0, step=0.01, format="%.2f", key="saisie_tva")
 
     piece_jointe = st.file_uploader(
         "📷 Photo du ticket de caisse ou PDF de la facture *", 
@@ -122,7 +146,6 @@ with tab_saisie:
     
     st.caption("* Champs obligatoires")
 
-    # Bouton de validation simple sans st.form
     if st.button("💾 Valider et enregistrer la dépense", type="primary"):
         manifestation = manifestation_autre.strip() if manifestation_choice == "Autre" else manifestation_choice
         
@@ -148,15 +171,18 @@ with tab_saisie:
             
             new_data.to_csv(CSV_FILE, mode='a', header=not os.path.exists(CSV_FILE), index=False)
             
-            # Réinitialisation de l'ensemble des clés du formulaire
+            # Réinitialisation propre des champs
             st.session_state.uploader_key += 1
             st.session_state["show_success_msg"] = True
             
-            # Nettoyage des champs de texte
-            for key in ["saisie_nom_prenom", "saisie_enseigne", "saisie_manifestation_autre", "saisie_ttc"]:
+            for key in ["saisie_nom_prenom", "saisie_enseigne", "saisie_manifestation_autre"]:
                 if key in st.session_state:
-                    del st.session_state[key]
+                    st.session_state[key] = ""
             
+            st.session_state["saisie_ttc"] = 0.0
+            st.session_state["saisie_ht"] = 0.0
+            st.session_state["saisie_tva"] = 0.0
+
             st.rerun()
         else:
             st.error("⚠️ Veuillez remplir tous les champs obligatoires (y compris le nom de la manifestation si 'Autre') et joindre un justificatif.")
@@ -238,7 +264,7 @@ with tab_tresorier:
                             st.rerun()
 
                     with st.expander("🚨 Supprimer cette dépense en cours"):
-                        st.warning("⚠️ Attention : La suppression est définitive. Le fichier justificatif ainsi que la ligne dans le tableau seront supprimés irréversiblement.")
+                        st.warning("⚠️ Attention : La suppression est definitiva. Le fichier justificatif ainsi que la ligne dans le tableau seront supprimés irréversiblement.")
                         
                         pwd_del_active = st.text_input("🔑 Mot de passe de suppression requis :", type="password", key="pwd_del_active")
                         confirm_del_active = st.checkbox("Je confirme vouloir supprimer définitivement cette ligne et son justificatif", key="chk_del_active")
