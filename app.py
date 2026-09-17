@@ -3,14 +3,32 @@ import pandas as pd
 import os
 from datetime import datetime
 
-# Configuration de la page
+# 1. Configuration de la page
 st.set_page_config(page_title="Trésorerie Sou des Écoles", page_icon="💰", layout="wide")
 
-# Fichiers et dossiers
+# 2. Masquer la barre supérieure Streamlit (icône GitHub, crayon d'édition, menu)
+hide_streamlit_style = """
+    <style>
+    #MainMenu {visibility: hidden;}
+    footer {visibility: hidden;}
+    header {visibility: hidden;}
+    [data-testid="stHeader"] {display: none;}
+    </style>
+"""
+st.markdown(hide_streamlit_style, unsafe_allow_html=True)
+
+# 3. Fichiers et dossiers
 UPLOAD_DIR = "justificatifs"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 CSV_FILE = "depenses_sou.csv"
 CSV_ARCHIVE_FILE = "depenses_archivees.csv"
+
+# 4. Récupération sécurisée du code Trésorier
+# (Cherche dans st.secrets["CODE_TRESORIER"], sinon utilise "1234" par défaut)
+try:
+    CODE_TRESORIER = st.secrets["CODE_TRESORIER"]
+except Exception:
+    CODE_TRESORIER = "1234"
 
 st.title("💰 Gestion de la Trésorerie — Sou des Écoles")
 
@@ -106,10 +124,9 @@ with tab_saisie:
 # --- ONGLET 2 : TABLEAU DE BORD TRÉSORIER ---
 # ==========================================
 with tab_tresorier:
-    CODE_TRESORIER = "1234"
     mot_de_passe = st.text_input("🔒 Entrez le code d'accès Trésorier :", type="password")
     
-    if mot_de_passe == CODE_TRESORIER:
+    if mot_de_passe == str(CODE_TRESORIER):
         st.success("Accès autorisé.")
         
         # Sous-onglets dans la partie Trésorier
