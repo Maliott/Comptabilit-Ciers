@@ -14,10 +14,12 @@ CSV_ARCHIVE_FILE = "depenses_archivees.csv"
 
 st.title("💰 Gestion de la Trésorerie — Sou des Écoles")
 
-tab1, tab2 = st.tabs(["📝 Saisir une dépense", "📊 Tableau de bord Trésorier"])
+tab_saisie, tab_tresorier = st.tabs(["📝 Saisir une dépense", "📊 Tableau de bord Trésorier"])
 
-# --- ONGLET 1 : SAISIE ---
-with tab1:
+# ==========================================
+# --- ONGLET 1 : SAISIE DES DÉPENSES ---
+# ==========================================
+with tab_saisie:
     st.subheader("Enregistrer un nouveau justificatif")
     
     col_event, col_date = st.columns(2)
@@ -26,7 +28,6 @@ with tab1:
             "Manifestation *", 
             ["Chalet gourmand", "Tombola", "Fête de l'école", "Autre"]
         )
-        # Gestion du choix "Autre"
         if manifestation_choice == "Autre":
             manifestation = st.text_input("Précisez le nom de la manifestation *")
         else:
@@ -99,154 +100,209 @@ with tab1:
             new_data.to_csv(CSV_FILE, mode='a', header=not os.path.exists(CSV_FILE), index=False)
             st.success("✅ Dépense et justificatif enregistrés avec succès !")
         else:
-            st.error("⚠️ Veuillez remplir tous les champs obligatoires (y compris le nom de la manifestation si 'Autre' est sélectionné) et joindre un justificatif.")
+            st.error("⚠️ Veuillez remplir tous les champs obligatoires (y compris la manifestation) et joindre un justificatif.")
 
+# ==========================================
 # --- ONGLET 2 : TABLEAU DE BORD TRÉSORIER ---
-with tab2:
-    st.subheader("📊 Suivi global et gestion des pièces")
-    
+# ==========================================
+with tab_tresorier:
     CODE_TRESORIER = "1234"
     mot_de_passe = st.text_input("🔒 Entrez le code d'accès Trésorier :", type="password")
     
     if mot_de_passe == CODE_TRESORIER:
         st.success("Accès autorisé.")
         
-        if os.path.exists(CSV_FILE) and os.path.getsize(CSV_FILE) > 0:
-            df = pd.read_csv(CSV_FILE)
+        # Sous-onglets dans la partie Trésorier
+        sub_tab1, sub_tab2 = st.tabs(["📊 Suivi global & Pièces", "🎪 Récapitulatif par Manifestation"])
+        
+        # ----------------------------------------------------
+        # SOUS-ONGLET 1 : SUIVI GLOBAL & GESTION DES PIÈCES
+        # ----------------------------------------------------
+        with sub_tab1:
+            st.subheader("📊 Suivi général et gestion des pièces")
             
-            if not df.empty:
-                # Filtres
-                col_f1, col_f2 = st.columns(2)
-                with col_f1:
-                    event_filter = st.selectbox("Filtrer par manifestation", ["Toutes"] + list(df["Manifestation"].unique()))
-                with col_f2:
-                    pay_filter = st.selectbox("Filtrer par mode de paiement", ["Tous"] + list(df["Mode de paiement"].unique()))
-                    
-                filtered_df = df.copy()
-                if event_filter != "Toutes":
-                    filtered_df = filtered_df[filtered_df["Manifestation"] == event_filter]
-                if pay_filter != "Tous":
-                    filtered_df = filtered_df[filtered_df["Mode de paiement"] == pay_filter]
-
-                # Indicateurs
-                m1, m2, m3, m4 = st.columns(4)
-                m1.metric("Total TTC", f"{filtered_df['Montant TTC (€)'].sum():.2f} €")
-                m2.metric("Total HT", f"{filtered_df['Montant HT (€)'].sum():.2f} €")
-                m3.metric("Total TVA", f"{filtered_df['TVA (€)'].sum():.2f} €")
-                m4.metric("Nombre de pièces", len(filtered_df))
-
-                st.divider()
-                st.subheader("📋 Liste des dépenses en cours")
-                st.dataframe(filtered_df, use_container_width=True)
+            if os.path.exists(CSV_FILE) and os.path.getsize(CSV_FILE) > 0:
+                df = pd.read_csv(CSV_FILE)
                 
-                st.divider()
-                st.subheader("🔎 Consulter, Archiver ou Supprimer une pièce")
-                
-                # Préparation des libellés pour le menu déroulant
-                df['Libelle'] = df['Date'] + " - " + df['Bénévole'] + " - " + df['Enseigne'] + " (" + df['Montant TTC (€)'].astype(str) + " €)"
-                selected_entry = st.selectbox("Choisissez une dépense :", df['Libelle'])
-                
-                selected_idx = df[df['Libelle'] == selected_entry].index[0]
-                selected_row = df.loc[selected_idx]
-                file_path = selected_row['Justificatif']
-                
-                # Actions : Télécharger / Archiver / Supprimer
-                col_act1, col_act2, col_act3 = st.columns(3)
-                
-                with col_act1:
-                    if os.path.exists(file_path):
-                        with open(file_path, "rb") as file:
-                            st.download_button(
-                                label="📥 Télécharger le justificatif",
-                                data=file,
-                                file_name=os.path.basename(file_path),
-                                use_container_width=True,
-                                key="dl_active"
-                            )
-                
-                with col_act2:
-                    if st.button("📦 Archiver la dépense", type="secondary", use_container_width=True):
-                        # Ajouter aux archives
-                        archived_row = pd.DataFrame([selected_row.drop('Libelle')])
-                        archived_row.to_csv(CSV_ARCHIVE_FILE, mode='a', header=not os.path.exists(CSV_ARCHIVE_FILE), index=False)
+                if not df.empty:
+                    # Filtres
+                    col_f1, col_f2 = st.columns(2)
+                    with col_f1:
+                        event_filter = st.selectbox("Filtrer par manifestation", ["Toutes"] + list(df["Manifestation"].unique()), key="f_event_global")
+                    with col_f2:
+                        pay_filter = st.selectbox("Filtrer par mode de paiement", ["Tous"] + list(df["Mode de paiement"].unique()), key="f_pay_global")
                         
-                        # Retirer du CSV principal
-                        df = df.drop(selected_idx).drop(columns=['Libelle'])
-                        df.to_csv(CSV_FILE, index=False)
-                        
-                        st.success("📦 Dépense archivée avec succès !")
-                        st.rerun()
+                    filtered_df = df.copy()
+                    if event_filter != "Toutes":
+                        filtered_df = filtered_df[filtered_df["Manifestation"] == event_filter]
+                    if pay_filter != "Tous":
+                        filtered_df = filtered_df[filtered_df["Mode de paiement"] == pay_filter]
 
-                with col_act3:
-                    if st.button("🗑️ Supprimer définitivement", type="primary", use_container_width=True):
-                        # Supprimer le fichier image/PDF si présent
-                        if os.path.exists(file_path):
-                            try:
-                                os.remove(file_path)
-                            except Exception as e:
-                                pass
-                        
-                        # Retirer du CSV principal
-                        df = df.drop(selected_idx).drop(columns=['Libelle'])
-                        df.to_csv(CSV_FILE, index=False)
-                        
-                        st.success("🗑️ Dépense et justificatif supprimés définitivement !")
-                        st.rerun()
+                    # Indicateurs
+                    m1, m2, m3, m4 = st.columns(4)
+                    m1.metric("Total TTC", f"{filtered_df['Montant TTC (€)'].sum():.2f} €")
+                    m2.metric("Total HT", f"{filtered_df['Montant HT (€)'].sum():.2f} €")
+                    m3.metric("Total TVA", f"{filtered_df['TVA (€)'].sum():.2f} €")
+                    m4.metric("Nombre de pièces", len(filtered_df))
 
-                # Visualisation de la photo ou du PDF
-                if os.path.exists(file_path):
-                    file_ext = os.path.splitext(file_path)[1].lower()
-                    if file_ext in [".png", ".jpg", ".jpeg"]:
-                        st.image(file_path, caption=f"Justificatif : {selected_row['Enseigne']}", use_container_width=True)
-                    elif file_ext == ".pdf":
-                        st.info("📄 Document PDF. Téléchargez-le avec le bouton ci-dessus pour le consulter.")
-                else:
-                    st.warning("Fichier justificatif non trouvé sur le serveur.")
-
-            else:
-                st.info("Aucune dépense active à afficher.")
-        else:
-            st.info("Aucune dépense enregistrée pour le moment.")
-
-        # --- SECTION ARCHIVES ---
-        st.divider()
-        with st.expander("📁 Voir et consulter les dépenses archivées"):
-            if os.path.exists(CSV_ARCHIVE_FILE) and os.path.getsize(CSV_ARCHIVE_FILE) > 0:
-                df_archive = pd.read_csv(CSV_ARCHIVE_FILE)
-                if not df_archive.empty:
-                    st.dataframe(df_archive, use_container_width=True)
-                    st.caption(f"Total des dépenses archivées : {df_archive['Montant TTC (€)'].sum():.2f} € ({len(df_archive)} pièces)")
+                    st.divider()
+                    st.subheader("📋 Liste des dépenses en cours")
+                    st.dataframe(filtered_df, use_container_width=True)
                     
                     st.divider()
-                    st.subheader("🔎 Visualiser un justificatif archivé")
+                    st.subheader("🔎 Consulter, Archiver ou Supprimer une pièce")
                     
-                    df_archive['Libelle'] = df_archive['Date'] + " - " + df_archive['Bénévole'] + " - " + df_archive['Enseigne'] + " (" + df_archive['Montant TTC (€)'].astype(str) + " €)"
-                    selected_archive_entry = st.selectbox("Choisissez une dépense archivée :", df_archive['Libelle'], key="archive_select")
+                    df['Libelle'] = df['Date'] + " - " + df['Bénévole'] + " - " + df['Enseigne'] + " (" + df['Montant TTC (€)'].astype(str) + " €)"
+                    selected_entry = st.selectbox("Choisissez une dépense :", df['Libelle'], key="select_active")
                     
-                    arch_row = df_archive[df_archive['Libelle'] == selected_archive_entry].iloc[0]
-                    arch_file_path = arch_row['Justificatif']
+                    selected_idx = df[df['Libelle'] == selected_entry].index[0]
+                    selected_row = df.loc[selected_idx]
+                    file_path = selected_row['Justificatif']
                     
-                    if os.path.exists(arch_file_path):
-                        with open(arch_file_path, "rb") as file:
-                            st.download_button(
-                                label="📥 Télécharger le justificatif archivé",
-                                data=file,
-                                file_name=os.path.basename(arch_file_path),
-                                use_container_width=True,
-                                key="dl_archive"
-                            )
-                        
-                        arch_ext = os.path.splitext(arch_file_path)[1].lower()
-                        if arch_ext in [".png", ".jpg", ".jpeg"]:
-                            st.image(arch_file_path, caption=f"Justificatif archivé : {arch_row['Enseigne']}", use_container_width=True)
-                        elif arch_ext == ".pdf":
-                            st.info("📄 Document PDF. Téléchargez-le avec le bouton ci-dessus.")
+                    # Actions
+                    col_act1, col_act2, col_act3 = st.columns(3)
+                    
+                    with col_act1:
+                        if os.path.exists(file_path):
+                            with open(file_path, "rb") as file:
+                                st.download_button(
+                                    label="📥 Télécharger le justificatif",
+                                    data=file,
+                                    file_name=os.path.basename(file_path),
+                                    use_container_width=True,
+                                    key="dl_active"
+                                )
+                    
+                    with col_act2:
+                        if st.button("📦 Archiver la dépense", type="secondary", use_container_width=True):
+                            archived_row = pd.DataFrame([selected_row.drop('Libelle')])
+                            archived_row.to_csv(CSV_ARCHIVE_FILE, mode='a', header=not os.path.exists(CSV_ARCHIVE_FILE), index=False)
+                            
+                            df = df.drop(selected_idx).drop(columns=['Libelle'])
+                            df.to_csv(CSV_FILE, index=False)
+                            st.success("📦 Dépense archivée avec succès !")
+                            st.rerun()
+
+                    with col_act3:
+                        if st.button("🗑️ Supprimer définitivement", type="primary", use_container_width=True):
+                            if os.path.exists(file_path):
+                                try:
+                                    os.remove(file_path)
+                                except Exception:
+                                    pass
+                            
+                            df = df.drop(selected_idx).drop(columns=['Libelle'])
+                            df.to_csv(CSV_FILE, index=False)
+                            st.success("🗑️ Dépense supprimée !")
+                            st.rerun()
+
+                    # Aperçu image/PDF
+                    if os.path.exists(file_path):
+                        file_ext = os.path.splitext(file_path)[1].lower()
+                        if file_ext in [".png", ".jpg", ".jpeg"]:
+                            st.image(file_path, caption=f"Justificatif : {selected_row['Enseigne']}", use_container_width=True)
+                        elif file_ext == ".pdf":
+                            st.info("📄 Document PDF. Utilisez le bouton ci-dessus pour le télécharger.")
                     else:
-                        st.warning("Fichier justificatif archivé introuvable sur le serveur.")
+                        st.warning("Fichier introuvable sur le serveur.")
+
                 else:
-                    st.info("Aucune dépense archivée.")
+                    st.info("Aucune dépense active à afficher.")
             else:
-                st.info("Aucune dépense archivée pour l'instant.")
+                st.info("Aucune dépense enregistrée pour le moment.")
+
+            # SECTION ARCHIVES
+            st.divider()
+            with st.expander("📁 Voir et consulter les dépenses archivées"):
+                if os.path.exists(CSV_ARCHIVE_FILE) and os.path.getsize(CSV_ARCHIVE_FILE) > 0:
+                    df_archive = pd.read_csv(CSV_ARCHIVE_FILE)
+                    if not df_archive.empty:
+                        st.dataframe(df_archive, use_container_width=True)
+                        st.caption(f"Total archivé : {df_archive['Montant TTC (€)'].sum():.2f} € ({len(df_archive)} pièces)")
+                        
+                        st.divider()
+                        st.subheader("🔎 Visualiser un justificatif archivé")
+                        df_archive['Libelle'] = df_archive['Date'] + " - " + df_archive['Bénévole'] + " - " + df_archive['Enseigne'] + " (" + df_archive['Montant TTC (€)'].astype(str) + " €)"
+                        selected_archive_entry = st.selectbox("Choisissez une dépense archivée :", df_archive['Libelle'], key="archive_select")
+                        
+                        arch_row = df_archive[df_archive['Libelle'] == selected_archive_entry].iloc[0]
+                        arch_file_path = arch_row['Justificatif']
+                        
+                        if os.path.exists(arch_file_path):
+                            with open(arch_file_path, "rb") as file:
+                                st.download_button(
+                                    label="📥 Télécharger le justificatif archivé",
+                                    data=file,
+                                    file_name=os.path.basename(arch_file_path),
+                                    use_container_width=True,
+                                    key="dl_archive"
+                                )
+                            arch_ext = os.path.splitext(arch_file_path)[1].lower()
+                            if arch_ext in [".png", ".jpg", ".jpeg"]:
+                                st.image(arch_file_path, caption=f"Justificatif archivé : {arch_row['Enseigne']}", use_container_width=True)
+                            elif arch_ext == ".pdf":
+                                st.info("📄 Document PDF.")
+                        else:
+                            st.warning("Fichier introuvable sur le serveur.")
+                    else:
+                        st.info("Aucune dépense archivée.")
+                else:
+                    st.info("Aucune dépense archivée pour l'instant.")
+
+        # ----------------------------------------------------
+        # SOUS-ONGLET 2 : RÉCAPITULATIF PAR MANIFESTATION
+        # ----------------------------------------------------
+        with sub_tab2:
+            st.subheader("🎪 Bilan financier par manifestation")
+            
+            if os.path.exists(CSV_FILE) and os.path.getsize(CSV_FILE) > 0:
+                df_manifest = pd.read_csv(CSV_FILE)
+                
+                if not df_manifest.empty:
+                    list_manifestations = sorted(list(df_manifest["Manifestation"].unique()))
+                    selected_manifestation = st.selectbox(
+                        "🎯 Choisissez la manifestation à analyser :", 
+                        list_manifestations,
+                        key="select_manifest_recap"
+                    )
+                    
+                    df_event = df_manifest[df_manifest["Manifestation"] == selected_manifestation]
+                    
+                    st.divider()
+                    
+                    # Cartes d'indicateurs
+                    c1, c2, c3, c4 = st.columns(4)
+                    c1.metric("Total TTC", f"{df_event['Montant TTC (€)'].sum():.2f} €")
+                    c2.metric("Total HT", f"{df_event['Montant HT (€)'].sum():.2f} €")
+                    c3.metric("Total TVA", f"{df_event['TVA (€)'].sum():.2f} €")
+                    c4.metric("Factures / Tickets", len(df_event))
+                    
+                    st.divider()
+                    
+                    col_table, col_chart = st.columns([3, 2])
+                    
+                    with col_table:
+                        st.subheader(f"📋 Dépenses : {selected_manifestation}")
+                        st.dataframe(df_event.drop(columns=['Justificatif']), use_container_width=True)
+                        
+                        # Exportation CSV des dépenses de cet événement
+                        csv_data = df_event.to_csv(index=False).encode('utf-8')
+                        st.download_button(
+                            label=f"📥 Exporter le bilan de '{selected_manifestation}' (CSV)",
+                            data=csv_data,
+                            file_name=f"bilan_{selected_manifestation.replace(' ', '_')}.csv",
+                            mime="text/csv"
+                        )
+
+                    with col_chart:
+                        st.subheader("💳 Répartition par paiement")
+                        chart_data = df_event.groupby("Mode de paiement")["Montant TTC (€)"].sum()
+                        st.bar_chart(chart_data)
+
+                else:
+                    st.info("Aucune dépense enregistrée.")
+            else:
+                st.info("Aucune dépense enregistrée pour le moment.")
 
     elif mot_de_passe != "":
         st.error("Code d'accès incorrect.")
