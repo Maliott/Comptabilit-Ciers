@@ -35,9 +35,9 @@ CSV_ARCHIVE_FILE = "depenses_archivees.csv"
 try:
     CODE_TRESORIER = st.secrets["CODE_TRESORIER"]
 except Exception:
-    CODE_TRESORIER = "jesaispas"
+    CODE_TRESORIER = "1234"
 
-CODE_SUPPRESSION = "suppression"
+CODE_SUPPRESSION = " suppression "
 
 # --- GESTION DE LA RÉINITIALISATION DU FORMULAIRE ---
 if "reset_form" not in st.session_state:
@@ -244,22 +244,45 @@ with tab_tresorier:
                     selected_row = df.loc[selected_idx]
                     file_path = selected_row['Justificatif']
                     
-                    col_act1, col_act2 = st.columns(2)
-                    
-                    with col_act1:
-                        if os.path.exists(file_path):
-                            with open(file_path, "rb") as file:
-                                st.download_button(
-                                    label="📥 Télécharger le justificatif",
-                                    data=file,
-                                    file_name=os.path.basename(file_path),
-                                    use_container_width=True,
-                                    key="dl_active"
-                                )
-                    
-                    with col_act2:
-                        if st.button("📦 Archiver la dépense", type="secondary", use_container_width=True):
-                            archived_row = pd.DataFrame([selected_row.drop('Libelle')])
+                    if os.path.exists(file_path):
+                        with open(file_path, "rb") as file:
+                            st.download_button(
+                                label="📥 Télécharger le justificatif",
+                                data=file,
+                                file_name=os.path.basename(file_path),
+                                use_container_width=True,
+                                key="dl_active"
+                            )
+
+                    # --- SECTION ARCHIVAGE AVEC SAISIE MANUELLE ---
+                    with st.expander("📦 Archiver cette dépense (Informations de règlement)", expanded=True):
+                        st.markdown("Veuillez renseigner les détails du paiement effectif avant l'archivage :")
+                        col_arch_date, col_arch_mode = st.columns(2)
+                        with col_arch_date:
+                            date_reglement = st.date_input("Date du règlement *", datetime.now(), key="archive_date_reglement")
+                        with col_arch_mode:
+                            default_mode_idx = 0
+                            modes = ["Virement bancaire", "Chèque", "Carte Bancaire", "Espèces", "Prélèvement"]
+                            if selected_row['Mode de paiement'] in modes:
+                                default_mode_idx = modes.index(selected_row['Mode de paiement'])
+                            mode_reglement = st.selectbox("Mode de règlement effectif *", modes, index=default_mode_idx, key="archive_mode_reglement")
+
+                        if st.button("📦 Confirmer l'archivage de la dépense", type="secondary", use_container_width=True):
+                            archived_dict = selected_row.drop('Libelle').to_dict()
+                            archived_dict["Date de règlement"] = date_reglement.strftime("%Y-%m-%d")
+                            archived_dict["Mode de règlement"] = mode_reglement
+                            
+                            archived_row = pd.DataFrame([archived_dict])
+                            
+                            # Réordonner les colonnes proprement pour l'archive
+                            cols_order = [
+                                "Date", "Date de règlement", "Manifestation", "Bénévole", "Enseigne", 
+                                "Mode de paiement", "Mode de règlement", "Montant TTC (€)", 
+                                "Montant HT (€)", "TVA (€)", "Justificatif"
+                            ]
+                            existing_cols = [c for c in cols_order if c in archived_row.columns]
+                            archived_row = archived_row[existing_cols]
+
                             archived_row.to_csv(CSV_ARCHIVE_FILE, mode='a', header=not os.path.exists(CSV_ARCHIVE_FILE), index=False)
                             
                             df = df.drop(selected_idx).drop(columns=['Libelle'])
@@ -401,7 +424,7 @@ with tab_tresorier:
                     
                     with col_table:
                         st.subheader(f"📋 Dépenses archivées : {selected_manifestation}")
-                        st.dataframe(df_event.drop(columns=['Justificatif']), use_container_width=True)
+                        st.dataframe(df_event.drop(columns=['Justificatif'], errors='ignore'), use_container_width=True)
                         
                         csv_data = df_event.to_csv(index=False).encode('utf-8')
                         st.download_button(
@@ -412,8 +435,9 @@ with tab_tresorier:
                         )
 
                     with col_chart:
-                        st.subheader("💳 Répartition par paiement")
-                        chart_data = df_event.groupby("Mode de paiement")["Montant TTC (€)"].sum()
+                        st.subheader("💳 Répartition par mode de règlement")
+                        chart_col = "Mode de règlement" if "Mode de règlement" in df_event.columns else "Mode de paiement"
+                        chart_data = df_event.groupby(chart_col)["Montant TTC (€)"].sum()
                         st.bar_chart(chart_data)
 
                 else:
