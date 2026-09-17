@@ -6,13 +6,30 @@ from datetime import datetime
 # 1. Configuration de la page
 st.set_page_config(page_title="Trésorerie Sou des Écoles", page_icon="💰", layout="wide")
 
-# 2. Masquer la barre supérieure Streamlit (icône GitHub, crayon d'édition, menu)
+# 2. Masquer TOUS les éléments d'interface Streamlit (Header, Toolbar, Badge rouge du bas, Menu)
 hide_streamlit_style = """
     <style>
+    /* Masquer le menu hamburger et le footer par défaut */
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
     header {visibility: hidden;}
-    [data-testid="stHeader"] {display: none;}
+    
+    /* Masquer la barre supérieure (GitHub, Crayon, Share) */
+    [data-testid="stHeader"] {display: none !important;}
+    .stAppToolbar {display: none !important;}
+    
+    /* Masquer le badge "Created with Streamlit" / "Hosted with Streamlit" en bas */
+    [data-testid="stStatusWidget"] {display: none !important;}
+    .stAppDeployButton {display: none !important;}
+    div[class*="viewerBadge"] {display: none !important;}
+    div[class*="styles_viewerBadge"] {display: none !important;}
+    a[href*="streamlit.io"] {display: none !important;}
+    #stDecoration {display: none !important;}
+    
+    /* Ajuster la marge supérieure laissée par le header masqué */
+    .block-container {
+        padding-top: 1.5rem !important;
+    }
     </style>
 """
 st.markdown(hide_streamlit_style, unsafe_allow_html=True)
