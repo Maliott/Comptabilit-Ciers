@@ -63,19 +63,24 @@ with tab_saisie:
     if "uploader_key" not in st.session_state:
         st.session_state.uploader_key = 0
 
-    with st.form("form_saisie_depense", clear_on_submit=True):
-        col_event, col_date = st.columns(2)
-        with col_event:
-            manifestation_choice = st.selectbox(
-                "Manifestation *", 
-                ["Chalet gourmand", "Tombola", "Fête de l'école", "Autre"],
-                key="form_manifestation_choice"
-            )
-            manifestation_autre = st.text_input("Précisez le nom de la manifestation (si 'Autre')", key="form_manifestation_autre")
+    col_event, col_date = st.columns(2)
+    with col_event:
+        manifestation_choice = st.selectbox(
+            "Manifestation *", 
+            ["Chalet gourmand", "Tombola", "Fête de l'école", "Autre"],
+            key="saisie_manifestation_choice"
+        )
+        
+        # Le champ n'apparaît QUE si "Autre" est sélectionné
+        if manifestation_choice == "Autre":
+            manifestation_autre = st.text_input("Précisez le nom de la manifestation *", key="saisie_manifestation_autre")
+        else:
+            manifestation_autre = ""
 
-        with col_date:
-            date_depense = st.date_input("Date de la dépense *", datetime.now(), key="form_date")
-            
+    with col_date:
+        date_depense = st.date_input("Date de la dépense *", datetime.now(), key="saisie_date")
+
+    with st.form("form_saisie_depense", clear_on_submit=True):
         col_ben, col_ens = st.columns(2)
         with col_ben:
             nom_prenom = st.text_input("Nom & Prénom du bénévole / payeur *", key="form_nom_prenom")
@@ -125,7 +130,7 @@ with tab_saisie:
         submit_btn = st.form_submit_button("💾 Valider et enregistrer la dépense", type="primary")
 
     if submit_btn:
-        manifestation = manifestation_autre if manifestation_choice == "Autre" else manifestation_choice
+        manifestation = manifestation_autre.strip() if manifestation_choice == "Autre" else manifestation_choice
         
         if manifestation and nom_prenom and enseigne and montant_ttc > 0 and piece_jointe:
             file_ext = os.path.splitext(piece_jointe.name)[1]
@@ -155,7 +160,7 @@ with tab_saisie:
             st.success("✅ Dépense et justificatif enregistrés avec succès ! Le formulaire a été réinitialisé.")
             st.rerun()
         else:
-            st.error("⚠️ Veuillez remplir tous les champs obligatoires (y compris le nom de la manifestation si 'Autre') et joindre un justificatif.")
+            st.error("⚠️ Veuillez remplir tous les champs obligatoires (y compris la précision du nom si 'Autre') et joindre un justificatif.")
 
 # ==========================================
 # --- ONGLET 2 : TABLEAU DE BORD TRÉSORIER ---
@@ -239,7 +244,7 @@ with tab_tresorier:
 
                     # Zone de suppression sécurisée avec mot de passe
                     with st.expander("🚨 Supprimer cette dépense en cours"):
-                        st.warning("⚠️ Attention : La suppression est definitiva. Le fichier justificatif ainsi que la ligne dans le tableau seront supprimés irréversiblement.")
+                        st.warning("⚠️ Attention : La suppression est définitive. Le fichier justificatif ainsi que la ligne dans le tableau seront supprimés irréversiblement.")
                         
                         pwd_del_active = st.text_input("🔑 Mot de passe de suppression requis :", type="password", key="pwd_del_active")
                         confirm_del_active = st.checkbox("Je confirme vouloir supprimer définitivement cette ligne et son justificatif", key="chk_del_active")
