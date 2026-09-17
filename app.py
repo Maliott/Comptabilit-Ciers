@@ -184,7 +184,7 @@ with tab_tresorier:
                     st.dataframe(filtered_df, use_container_width=True)
                     
                     st.divider()
-                    st.subheader("🔎 Consulter, Archiver ou Supprimer une pièce")
+                    st.subheader("🔎 Consulter, Archiver ou Supprimer une dépense en cours")
                     
                     df['Libelle'] = df['Date'] + " - " + df['Bénévole'] + " - " + df['Enseigne'] + " (" + df['Montant TTC (€)'].astype(str) + " €)"
                     selected_entry = st.selectbox("Choisissez une dépense :", df['Libelle'], key="select_active")
@@ -247,7 +247,7 @@ with tab_tresorier:
 
             # SECTION ARCHIVES
             st.divider()
-            with st.expander("📁 Voir et consulter toutes les dépenses archivées"):
+            with st.expander("📁 Voir, consulter ou supprimer des dépenses archivées"):
                 if os.path.exists(CSV_ARCHIVE_FILE) and os.path.getsize(CSV_ARCHIVE_FILE) > 0:
                     df_archive = pd.read_csv(CSV_ARCHIVE_FILE)
                     if not df_archive.empty:
@@ -255,22 +255,41 @@ with tab_tresorier:
                         st.caption(f"Total archivé : {df_archive['Montant TTC (€)'].sum():.2f} € ({len(df_archive)} pièces)")
                         
                         st.divider()
-                        st.subheader("🔎 Visualiser un justificatif archivé")
+                        st.subheader("🔎 Visualiser ou Supprimer un justificatif archivé")
                         df_archive['Libelle'] = df_archive['Date'] + " - " + df_archive['Bénévole'] + " - " + df_archive['Enseigne'] + " (" + df_archive['Montant TTC (€)'].astype(str) + " €)"
                         selected_archive_entry = st.selectbox("Choisissez une dépense archivée :", df_archive['Libelle'], key="archive_select")
                         
-                        arch_row = df_archive[df_archive['Libelle'] == selected_archive_entry].iloc[0]
+                        arch_idx = df_archive[df_archive['Libelle'] == selected_archive_entry].index[0]
+                        arch_row = df_archive.loc[arch_idx]
                         arch_file_path = arch_row['Justificatif']
                         
+                        col_arch_act1, col_arch_act2 = st.columns(2)
+                        
+                        with col_arch_act1:
+                            if os.path.exists(arch_file_path):
+                                with open(arch_file_path, "rb") as file:
+                                    st.download_button(
+                                        label="📥 Télécharger le justificatif archivé",
+                                        data=file,
+                                        file_name=os.path.basename(arch_file_path),
+                                        use_container_width=True,
+                                        key="dl_archive"
+                                    )
+                        
+                        with col_arch_act2:
+                            if st.button("🗑️ Supprimer définitivement de l'archive", type="primary", use_container_width=True, key="del_archive_btn"):
+                                if os.path.exists(arch_file_path):
+                                    try:
+                                        os.remove(arch_file_path)
+                                    except Exception:
+                                        pass
+                                
+                                df_archive = df_archive.drop(arch_idx).drop(columns=['Libelle'])
+                                df_archive.to_csv(CSV_ARCHIVE_FILE, index=False)
+                                st.success("🗑️ Dépense archivée supprimée avec succès !")
+                                st.rerun()
+
                         if os.path.exists(arch_file_path):
-                            with open(arch_file_path, "rb") as file:
-                                st.download_button(
-                                    label="📥 Télécharger le justificatif archivé",
-                                    data=file,
-                                    file_name=os.path.basename(arch_file_path),
-                                    use_container_width=True,
-                                    key="dl_archive"
-                                )
                             arch_ext = os.path.splitext(arch_file_path)[1].lower()
                             if arch_ext in [".png", ".jpg", ".jpeg"]:
                                 st.image(arch_file_path, caption=f"Justificatif archivé : {arch_row['Enseigne']}", use_container_width=True)
